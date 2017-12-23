@@ -275,6 +275,15 @@
   <ItemGroup>
     <Resource Include="Images\Sync.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\gameControllers.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\disconnectAll.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\disconnect.png" />
+  </ItemGroup>
   <Import Project="..\Shared\Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

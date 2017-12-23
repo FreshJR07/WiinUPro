@@ -1,0 +1,1 @@
+"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\msbuild.exe" "C:\WiinUPro-master\WiinUPro-master\WiinUSoft\WiinUSoft.csproj" /P:Configuration="Release" /p:FrameworkPathOverride="C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0"

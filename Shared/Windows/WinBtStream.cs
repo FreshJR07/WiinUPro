@@ -289,10 +289,19 @@ namespace Shared.Windows
                             //    AssociatedStack.Add(diDetail.devicePath, associatedStack);
                             //}
 
+                            string btmac = "";
+                            byte[] buffer = new byte[128];
+                            if (HidD_GetSerialNumberString(handle.DangerousGetHandle(), buffer, buffer.Length))     //returns btMac address in unicode array
+                            {
+                                btmac = System.Text.Encoding.Unicode.GetString(buffer);     //convert byte array into unicode
+                                btmac = btmac.Replace("\0", string.Empty);                  //removes all unicode null "\0" charecters
+                            }
+
                             result.Add(new DeviceInfo
                             {
                                 DevicePath = diDetail.devicePath,
-                                Type = attrib.ProductID == 0x0330 ? ControllerType.ProController : ControllerType.Wiimote
+                                Type = attrib.ProductID == 0x0330 ? ControllerType.ProController : ControllerType.Wiimote,
+                                Mac = btmac
                             });
                         }
                     }

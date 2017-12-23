@@ -70,6 +70,11 @@ namespace NintrollerLib
         /// The calibration settings applied to the respective controller types.
         /// </summary>
         public CalibrationStorage StoredCalibrations { get { return _calibrations; } }
+        /// Externally Invoke disconnect to create Disconnected Event
+        public void setDisconnected()
+        {
+            Disconnected?.Invoke(this, new DisconnectedEventArgs());   
+        }
 
         /// <summary>
         /// Gets or Sets the current IR Camera Mode.
@@ -1319,10 +1324,10 @@ namespace NintrollerLib
         /// <param name="bin">Decimal binary value to use (0 - 15).</param>
         public void SetBinaryLEDs(int bin)
         {
-            _led1 = (bin & 0x01) > 0;
-            _led2 = (bin & 0x02) > 0;
-            _led3 = (bin & 0x04) > 0;
-            _led4 = (bin & 0x08) > 0;
+            _led1 = (bin & 0b1000) > 0;
+            _led2 = (bin & 0b0100) > 0;
+            _led3 = (bin & 0b0010) > 0;
+            _led4 = (bin & 0b0001) > 0;
 
             ApplyLEDs();
         }
@@ -1575,6 +1580,14 @@ namespace NintrollerLib
         public DisconnectedEventArgs(Exception err)
         {
             error = err;
+        }
+
+        /// <summary>
+        /// Creates instance with blank exception.
+        /// </summary>
+        public DisconnectedEventArgs()
+        {
+
         }
     }
 

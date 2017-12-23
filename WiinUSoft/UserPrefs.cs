@@ -20,9 +20,9 @@ namespace WiinUSoft
                         DataPath = AppDomain.CurrentDomain.BaseDirectory + @"\prefs.config";
                         LoadPrefs();
                     }
-                    else if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft_prefs.config"))
+                    else if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\prefs.config"))
                     {
-                        DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft_prefs.config";
+                        DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\prefs.config";
                         LoadPrefs();
                     }
                     else
@@ -37,7 +37,7 @@ namespace WiinUSoft
                         
                         if (!SavePrefs())
                         {
-                            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft_prefs.config";
+                            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\prefs.config";
                             SavePrefs();
                         }
                     }
@@ -101,6 +101,7 @@ namespace WiinUSoft
         public bool greedyMode;
         public bool toshibaMode;
         public bool autoRefresh = true;
+        public bool autoXInput = true;
 
         public UserPrefs()
         { }
@@ -196,6 +197,7 @@ namespace WiinUSoft
                 {
                     pref.name            = property.name;
                     pref.autoConnect     = property.autoConnect;
+                    pref.idleDisconnect  = property.idleDisconnect;
                     pref.profile         = property.profile;
                     pref.connType        = property.connType;
                     pref.autoNum         = property.autoNum;
@@ -264,9 +266,10 @@ namespace WiinUSoft
         public string hid = "";
         public string name = "";
         public string lastIcon = "";
-        public bool autoConnect = false;
+        public bool autoConnect = true;
+        public int idleDisconnect = 180000;          //3 min converted into milliseconds
         public bool useRumble = true;
-        public int autoNum = 0;
+        public int autoNum = 5;
         public int rumbleIntensity = 2;
         public ProfHolderType connType;
         public string profile = "";
@@ -295,6 +298,7 @@ namespace WiinUSoft
             hid = copy.hid;
             name = copy.name;
             autoConnect = copy.autoConnect;
+            idleDisconnect = copy.idleDisconnect;
             autoNum = copy.autoNum;
             useRumble = copy.useRumble;
             rumbleIntensity = copy.rumbleIntensity;

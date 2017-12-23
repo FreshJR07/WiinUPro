@@ -22,6 +22,9 @@ namespace Shared
         public string VID { get; set; }
         public string PID { get; set; }
 
+        // For all controllers
+        public string Mac { get; set; }
+
         public bool SameDevice(string identifier)
         {
             if (!string.IsNullOrEmpty(DevicePath))

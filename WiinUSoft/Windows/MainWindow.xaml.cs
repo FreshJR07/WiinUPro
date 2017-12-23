@@ -84,11 +84,12 @@ namespace WiinUSoft
             hidList = WinBtStream.GetPaths();
             List<KeyValuePair<int, DeviceControl>> connectSeq = new List<KeyValuePair<int, DeviceControl>>();
             
-            foreach (var hid in hidList)
-            {
+            //for each Nintendo (HID) device in device manager
+            foreach (var hid in hidList)                        //will create new DeviceControl if not already present and execute actions
+            {                                                   //if DeviceControl is already present will execute actions
                 DeviceControl existingDevice = null;
 
-                foreach (DeviceControl d in deviceList)
+                foreach (DeviceControl d in deviceList) 
                 {
                     if (d.DevicePath == hid.DevicePath)
                     {
@@ -97,19 +98,20 @@ namespace WiinUSoft
                     }
                 }
 
-                if (existingDevice != null)
-                {
+                if (existingDevice != null)                     // follow this procedure for devices that already have DeviceControl
+                {                                                   // Refreshstate and check for AutoConnect
                     if (!existingDevice.Connected)
                     {
                         existingDevice.RefreshState();
-                        if (existingDevice.properties.autoConnect && existingDevice.ConnectionState == DeviceState.Discovered)
-                        {
-                            connectSeq.Add(new KeyValuePair<int, DeviceControl>(existingDevice.properties.autoNum, existingDevice));
-                        }
+                    }
+
+                    if ( UserPrefs.Instance.autoXInput && existingDevice.properties.autoNum != 0 && existingDevice.ConnectionState == DeviceState.Discovered)
+                    {
+                        connectSeq.Add(new KeyValuePair<int, DeviceControl>(existingDevice.properties.autoNum, existingDevice));
                     }
                 }
-                else
-                {
+                else                                           // or follow this prodcedure that do not have DeviceControl
+                {                                                 // create DeviceControl, subscribes to DeviceControl's events, RefreshState, and check for AutoConnect
                     var stream = new WinBtStream(
                         hid.DevicePath, 
                         UserPrefs.Instance.toshibaMode ? WinBtStream.BtStack.Toshiba : WinBtStream.BtStack.Microsoft, 
@@ -118,15 +120,34 @@ namespace WiinUSoft
 
                     if (stream.OpenConnection() && stream.CanRead)
                     {
-                        deviceList.Add(new DeviceControl(n, hid.DevicePath));
+                        deviceList.Add(new DeviceControl(n, hid.DevicePath, hid.Mac));
                         deviceList[deviceList.Count - 1].OnConnectStateChange += DeviceControl_OnConnectStateChange;
                         deviceList[deviceList.Count - 1].OnConnectionLost += DeviceControl_OnConnectionLost;
                         deviceList[deviceList.Count - 1].RefreshState();
-                        if (deviceList[deviceList.Count - 1].properties.autoConnect)
+                        if ( UserPrefs.Instance.autoXInput && deviceList[deviceList.Count - 1].properties.autoNum != 0 )
                         {
                             connectSeq.Add(new KeyValuePair<int, DeviceControl>(deviceList[deviceList.Count - 1].properties.autoNum, deviceList[deviceList.Count - 1]));
                         }
                     }
+                    
+                }
+            }
+
+            //for each existing DeviceControl
+            foreach (DeviceControl dc in deviceList)                    //check if existing Device Control has its corresponding HID device still present
+            {
+                bool hidPresent = false;                                                                          
+                foreach (var hid in hidList) 
+                {
+                    if (dc.DevicePath == hid.DevicePath)
+                    {
+                        hidPresent = true;
+                        break;
+                    }                           
+                }
+                if ( hidPresent == false )                              // dispose of DeviceControl on if corresponding HID device is not present
+                {
+                 dc.setDisconnected();
                 }
             }
 
@@ -141,7 +162,7 @@ namespace WiinUSoft
             {
                 var thingy = connectSeq[a];
 
-                if (thingy.Key == 5)
+                if (thingy.Key == 5 )
                 {
                     if (Holders.XInputHolder.availabe[target] && target < 4)
                     {
@@ -189,7 +210,7 @@ namespace WiinUSoft
             }
         }
 
-        private void AutoRefresh(bool set)
+        private bool AutoRefresh(bool set)
         {
             if (set && !_refreshing)
             {
@@ -212,6 +233,8 @@ namespace WiinUSoft
             {
                 _refreshToken.Cancel();
             }
+
+            return set;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -220,6 +243,7 @@ namespace WiinUSoft
             {
                 Version version = System.Reflection.Assembly.GetEntryAssembly().GetName().Version;
                 menu_version.Header = string.Format("version {0}.{1}.{2}", version.Major, version.Minor, version.Revision);
+                menu_version.Header += " FreshJR Fork";
             }
             catch { }
 
@@ -233,6 +257,7 @@ namespace WiinUSoft
             menu_NoSharing.IsChecked = UserPrefs.Instance.greedyMode;
             menu_AutoRefresh.IsChecked = UserPrefs.Instance.autoRefresh;
             menu_MsBluetooth.IsChecked = !UserPrefs.Instance.toshibaMode;
+            menu_AutoXInput.IsChecked = UserPrefs.Instance.autoXInput;
 
             if (UserPrefs.Instance.greedyMode)
             {
@@ -281,7 +306,8 @@ namespace WiinUSoft
             
             if (menu_AutoRefresh.IsChecked)
             {
-                AutoRefresh(groupAvailable.Children.Count + groupXinput.Children.Count == 0);
+                bool result = false;
+                result = AutoRefresh(groupAvailable.Children.Count + groupXinput.Children.Count == 0);
             }
         }
 
@@ -297,8 +323,6 @@ namespace WiinUSoft
             }
 
             deviceList.Remove(sender);
-
-            AutoRefresh(menu_AutoRefresh.IsChecked && deviceList.Count == 0);
         }
         
         private void btnDetatchAllXInput_Click(object sender, RoutedEventArgs e)
@@ -325,7 +349,22 @@ namespace WiinUSoft
             sync.ShowDialog();
             Refresh();
         }
+		
+		private void btnDiscAll_Click(object sender, RoutedEventArgs e)
+        {
+			foreach (DeviceControl dc in deviceList)
+            {
+                dc.disconnect();
+            }
 
+        }				
+		
+		private void btnGameCtrl_Click(object sender, RoutedEventArgs e)
+        {
+			System.Diagnostics.Process.Start("joy.cpl");
+        }
+
+		
         private void Window_StateChanged(object sender, EventArgs e)
         {
             HideWindow();
@@ -397,6 +436,18 @@ namespace WiinUSoft
             AutoRefresh(menu_AutoRefresh.IsChecked && groupAvailable.Children.Count + groupXinput.Children.Count == 0);
         }
 
+        private void menu_AutoXInput_Click(object sender, RoutedEventArgs e)
+        {
+            menu_AutoXInput.IsChecked = !menu_AutoXInput.IsChecked;
+            UserPrefs.Instance.autoXInput = menu_AutoXInput.IsChecked;
+            UserPrefs.SavePrefs();
+            if (menu_AutoXInput.IsChecked)
+            {
+                Refresh();
+            }
+            
+        }
+
         private void menu_SetDefaultCalibration_Click(object sender, RoutedEventArgs e)
         {
             var dWin = new Windows.CalDefaultWindow();
@@ -410,6 +461,32 @@ namespace WiinUSoft
             UserPrefs.Instance.toshibaMode = !menu_MsBluetooth.IsChecked;
             UserPrefs.SavePrefs();
         }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+
+            // Listen for devices coming and going
+            DeviceListener.Instance.OnDevicesUpdated += DeviceEvent;
+            DeviceListener.Instance.RegisterDeviceNotification(this);
+        }
+
+        private void DeviceEvent()
+        {
+            //delay is needed when using the "bluetooth" device listener instead of "hid" device listener 
+            //since the bluetooth listener detects the controller before it completely finishes connecting 
+            //As to why the dispatcher is needed to invoke a working refresh, I have no idea, but it works this way
+            Delay(100).ContinueWith(o => Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => Refresh())));
+        }
+
+        
+        static System.Threading.Tasks.Task Delay(int milliseconds)
+        {
+            var tcs = new System.Threading.Tasks.TaskCompletionSource<object>();
+            new System.Threading.Timer(_ => tcs.SetResult(null)).Change(milliseconds, -1);
+            return tcs.Task;
+        }
+
 
         #region Shortcut Creation
         public void CreateShortcut(string path)

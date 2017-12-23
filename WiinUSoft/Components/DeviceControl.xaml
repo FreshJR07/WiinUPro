@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
              d:DesignHeight="350" d:DesignWidth="300" Width="280" Height="80">
-    <Grid Width="280" Height="80">
+    <Grid Width="280" Height="80">       
         <Rectangle Height="80" Margin="0" Width="280" StrokeThickness="4" RadiusX="16" RadiusY="16" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Rectangle.Stroke>
                 <SolidColorBrush Color="{DynamicResource JohnTheRevelater}"/>
@@ -18,7 +18,7 @@
             </Rectangle.Fill>
         </Rectangle>
         <Label x:Name="labelUnavailable" Content="Device Unavailable" HorizontalAlignment="Center" Margin="0" VerticalAlignment="Center" FontSize="16" FontStyle="Italic" Width="145" Foreground="#FF939393" Visibility="Hidden"/>
-        <Image x:Name="icon" HorizontalAlignment="Left" Margin="12,16,0,0" VerticalAlignment="Top" Source="{DynamicResource UIcon}" Width="80">
+        <Image x:Name="icon" HorizontalAlignment="Left" Margin="12,16,0,0" VerticalAlignment="Top" Source="{DynamicResource UIcon}" Width="80" MouseDown="btnControllerIcon_Click">
             <Image.ContextMenu>
                 <ContextMenu>
                     <MenuItem x:Name="typeClear" Header="Reset" Click="typeOption_Click"/>
@@ -48,7 +48,7 @@
             </Button.ContextMenu>
             <Image x:Name="btnXinput_image" Source="../Images/xboxlogob64.png" Margin="1"></Image>
         </Button>
-        <Button x:Name="btnVjoy" HorizontalAlignment="Left" Margin="226,36,-22,0" VerticalAlignment="Top" Width="38" Height="38" BorderBrush="{DynamicResource BrushAntemBlue}" BorderThickness="2" IsEnabled="False" ToolTip="Attatch as DirectInput Device" Background="{DynamicResource ButonFillBrush1}" IsEnabledChanged="btnVjoy_IsEnabledChanged" Visibility="Hidden">
+		<Button x:Name="btnVjoy" HorizontalAlignment="Left" Margin="226,36,-22,0" VerticalAlignment="Top" Width="38" Height="38" BorderBrush="{DynamicResource BrushAntemBlue}" BorderThickness="2" IsEnabled="False" ToolTip="Attatch as DirectInput Device" Background="{DynamicResource ButonFillBrush1}" IsEnabledChanged="btnVjoy_IsEnabledChanged" Visibility="Hidden">
             <Button.ContextMenu>
                 <ContextMenu/>
             </Button.ContextMenu>
@@ -60,5 +60,11 @@
         <Button x:Name="btnDetatch" HorizontalAlignment="Left" Margin="226,36,0,0" VerticalAlignment="Top" Width="38" Height="38" BorderBrush="{DynamicResource BrushAntemBlue}" BorderThickness="2" FontSize="10" Click="btnDetatch_Click" Visibility="Hidden" ToolTip="Detatch" Background="{DynamicResource ButonFillBrush1}">
             <Image Source="../Images/remove.png"/>
         </Button>
+		
+		
+		<Button x:Name="btnDisconnect" HorizontalAlignment="Left" Margin="8,5,0,0" VerticalAlignment="Top" Width="16" Height="16" BorderThickness="0" Click="btnDisconnect_Click" ToolTip="Disconnect Device" Background="Transparent">
+            <Image Source="../Images/disconnect.png"/>
+        </Button> 
+		
     </Grid>
 </UserControl>

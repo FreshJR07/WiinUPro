@@ -7,6 +7,7 @@ using NintrollerLib;
 using System.Xml.Serialization;
 using System.IO;
 using Shared.Windows;
+using System.Text.RegularExpressions;
 
 namespace WiinUSoft
 {
@@ -27,6 +28,7 @@ namespace WiinUSoft
 
         // private members
         private string devicePath;
+        private string deviceMac = "00:00:00:00:00:00";
         private Nintroller device;
         private DeviceState state;
         private IR     previousIR;
@@ -35,6 +37,8 @@ namespace WiinUSoft
         private int   rumbleStepCount   = 0;
         private int   rumbleStepPeriod  = 10;
         private float rumbleSlowMult    = 0.5f;
+        private bool  userDisconnecting    = false;
+        public int   disconnectTime   = -1;
         
         // internally public members
         internal Holders.Holder holder;
@@ -44,6 +48,7 @@ namespace WiinUSoft
         internal bool           identifying = false;
         internal string         dName = "";
         internal System.Threading.Timer updateTimer;
+        internal System.Threading.Timer disconnectTimer;
 
         // constance
         internal const int UPDATE_SPEED = 25;
@@ -118,21 +123,31 @@ namespace WiinUSoft
         public DeviceControl()
         {
             InitializeComponent();
+            disconnectTimer = new System.Threading.Timer(TimerDisconnect, null, disconnectTime, -1);
         }
 
-        public DeviceControl(Nintroller nintroller, string path)
+        public DeviceControl(Nintroller nintroller, string path, string mac)
             : this()
         {
             Device = nintroller;
             devicePath = path;
-
+            deviceMac = mac;
+            
             Device.Disconnected += device_Disconnected;
         }
 
         public void RefreshState()
         {
+            //if not reading data from device connection, uncomment to have active data steam even in unmanaged mode
+            //if ((device.DataStream as WinBtStream).OpenConnection() && device.DataStream.CanRead)
+            //{
+                //device.BeginReading();               
+            //}
+
+            //if device is discovered (not in XInput mode)
             if (state != DeviceState.Connected_XInput)
                 ConnectionState = DeviceState.Discovered;
+                //device.SetBinaryLEDs(0b1111);             //uncomment to set LED pattern in when in unmanaged mode.
 
             // Load Properties
             properties = UserPrefs.Instance.GetDevicePref(devicePath);
@@ -140,6 +155,7 @@ namespace WiinUSoft
             {
                 SetName(string.IsNullOrWhiteSpace(properties.name) ? device.Type.ToString() : properties.name);
                 ApplyCalibration(properties.calPref, properties.calString ?? "");
+                disconnectTime = properties.idleDisconnect;
                 snapIRpointer = properties.pointerMode != Property.PointerOffScreenMode.Center;
                 if (!string.IsNullOrEmpty(properties.lastIcon))
                 {
@@ -166,11 +182,65 @@ namespace WiinUSoft
             holder?.Close();
             lowBatteryFired = false;
             ConnectionState = DeviceState.Discovered;
+            RefreshState();
             Dispatcher.BeginInvoke
             (
                 System.Windows.Threading.DispatcherPriority.Background,
                 new Action(() => statusGradient.Color = (Color)FindResource("AntemBlue")
             ));
+        }
+
+        public void setDisconnected()
+        {
+            device.setDisconnected();
+        }
+		
+		public void disconnect()
+		{
+            //this step is actually not needed for the disconnect function to execute 
+            //currently in v3.3.560, WiinUSoft will be left in a glitched state if a device is disconnected that does not have an actively open DataStream
+            //this is because the device dispose procedure is occurs executed with an actively read data stream is interupted
+            bool wasConnected = Connected;
+            if (wasConnected || ((device.DataStream as WinBtStream).OpenConnection() && device.DataStream.CanRead))
+            {
+                if (!wasConnected)
+                    device.BeginReading();
+            }
+            
+
+			//controller disconnect function used to disconnect bluetooth device by mac address
+            long lbtAddr = Convert.ToInt64(deviceMac.Replace(":", ""), 16);
+            bool success = false;
+			
+            int IOCTL_BTH_DISCONNECT_DEVICE = 0x41000c;
+			int bytesReturned = 0;
+			var radioParams = new NativeImports.BLUETOOTH_FIND_RADIO_PARAMS();			
+			radioParams.Initialize();
+			IntPtr hRadio;									//handle of bluetooth radio, 							close with CloseHandle()
+			IntPtr hFind;									//handle needed to pass into BluetoothFindNextRadio, 	close with BluetoothFindRadioClose()
+			
+			// Get first BT Radio and execute commands
+			hFind = NativeImports.BluetoothFindFirstRadio(ref radioParams, out hRadio);
+			if (hRadio != IntPtr.Zero)
+			{
+				do
+				{
+					//commands to execute per BT Radio
+					success = NativeImports.DeviceIoControl(hRadio, IOCTL_BTH_DISCONNECT_DEVICE, ref lbtAddr, 8, IntPtr.Zero, 0, ref bytesReturned, IntPtr.Zero);
+					NativeImports.CloseHandle( hRadio );
+					
+				// Repeat commands if more BT Radio's exist
+				} while ( NativeImports.BluetoothFindNextRadio(ref hFind, out hRadio) );
+				//close hFind that was used with BluetoothFindNextRadio()
+				NativeImports.BluetoothFindRadioClose( hFind );	
+			}
+
+            userDisconnecting = success;
+		}
+
+        private void TimerDisconnect(object holderState)
+        {
+            disconnect();
         }
 
         public void SetState(DeviceState newState)
@@ -193,6 +263,7 @@ namespace WiinUSoft
                     btnDetatch.IsEnabled    = false;
                     btnConfig.Visibility    = Visibility.Hidden;
                     btnDetatch.Visibility   = Visibility.Hidden;
+                    disconnectTimer.Change(-1, -1);
                     break;
 
                 case DeviceState.Discovered:
@@ -204,6 +275,7 @@ namespace WiinUSoft
                     btnDetatch.IsEnabled    = false;
                     btnConfig.Visibility    = Visibility.Hidden;
                     btnDetatch.Visibility   = Visibility.Hidden;
+                    disconnectTimer.Change(-1, -1);
                     break;
 
                 case DeviceState.Connected_XInput:
@@ -215,6 +287,7 @@ namespace WiinUSoft
                     btnDetatch.IsEnabled    = true;
                     btnConfig.Visibility    = Visibility.Visible;
                     btnDetatch.Visibility   = Visibility.Visible;
+                    disconnectTimer.Change(disconnectTime, -1);
 
                     var xHolder = new Holders.XInputHolder(device.Type);
                     LoadProfile(properties.profile, xHolder);
@@ -239,6 +312,7 @@ namespace WiinUSoft
             }
         }
 
+		
         void device_ExtensionChange(object sender, NintrollerExtensionEventArgs e)
         {
             DeviceType = e.controllerType;
@@ -316,6 +390,9 @@ namespace WiinUSoft
                     holder.SetValue(Inputs.ProController.RLEFT,  pro.RJoy.X < 0 ? pro.RJoy.X * -1 : 0f);
                     holder.SetValue(Inputs.ProController.RUP,    pro.RJoy.Y > 0 ? pro.RJoy.Y : 0f);
                     holder.SetValue(Inputs.ProController.RDOWN,  pro.RJoy.Y < 0 ? pro.RJoy.Y * -1 : 0f);
+                    
+                    if ( pro.Up || pro.Down || pro.Left || pro.Right || pro.A || pro.B || pro.X || pro.Y || pro.L || pro.R || pro.ZL || pro.ZR  || pro.Plus || pro.Minus || pro.Home || pro.LStick || pro.RStick)
+                        disconnectTimer.Change(disconnectTime, -1);
                     #endregion
                     break;
 
@@ -390,6 +467,9 @@ namespace WiinUSoft
                     holder.SetValue(Inputs.ClassicController.RLEFT, cc.RJoy.X < 0 ? cc.RJoy.X * -1 : 0f);
                     holder.SetValue(Inputs.ClassicController.RUP, cc.RJoy.Y > 0 ? cc.RJoy.Y : 0f);
                     holder.SetValue(Inputs.ClassicController.RDOWN, cc.RJoy.Y < 0 ? cc.RJoy.Y * -1 : 0f);
+
+                   if ( cc.Up || cc.Down || cc.Left || cc.Right || cc.A || cc.B || cc.X || cc.Y || cc.LFull || cc.RFull || cc.ZL || cc.ZR  || cc.Start || cc.Select || cc.Home)
+                       disconnectTimer.Change(disconnectTime, -1);
                     #endregion
                     break;
 
@@ -427,6 +507,9 @@ namespace WiinUSoft
                     holder.SetValue(Inputs.ClassicControllerPro.RLEFT, ccp.RJoy.X < 0 ? ccp.RJoy.X * -1 : 0f);
                     holder.SetValue(Inputs.ClassicControllerPro.RUP, ccp.RJoy.Y > 0 ? ccp.RJoy.Y : 0f);
                     holder.SetValue(Inputs.ClassicControllerPro.RDOWN, ccp.RJoy.Y < 0 ? ccp.RJoy.Y * -1 : 0f);
+
+                    if ( ccp.Up || ccp.Down || ccp.Left || ccp.Right || ccp.A || ccp.B || ccp.X || ccp.Y || ccp.L || ccp.R || ccp.ZL || ccp.ZR  || ccp.Start || ccp.Select || ccp.Home)
+                        disconnectTimer.Change(disconnectTime, -1);
                     #endregion
                     break;
             }
@@ -439,12 +522,14 @@ namespace WiinUSoft
 
         private void device_Disconnected(object sender, DisconnectedEventArgs e)
         {
+
             Application.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
                 new Action(() =>
                 {
                     Detatch();
                     OnConnectionLost?.Invoke(this);
-                    MainWindow.Instance.ShowBalloon("Connection Lost", "Failed to communicate with controller. It may no longer be connected.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Error);
+                    if (userDisconnecting != true)
+                        MainWindow.Instance.ShowBalloon("Connection Lost", "Failed to communicate with controller. It may no longer be connected.", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Error);
                 }
             ));
         }
@@ -475,6 +560,9 @@ namespace WiinUSoft
             holder.SetValue(Inputs.Wiimote.ACC_SHAKE_X, wm.accelerometer.X > 1.15);
             holder.SetValue(Inputs.Wiimote.ACC_SHAKE_Y, wm.accelerometer.Y > 1.15);
             holder.SetValue(Inputs.Wiimote.ACC_SHAKE_Z, wm.accelerometer.Z > 1.15);
+
+            if ( wm.buttons.Up || wm.buttons.Down || wm.buttons.Left || wm.buttons.Right || wm.buttons.A || wm.buttons.B || wm.buttons.One || wm.buttons.Two || wm.buttons.Minus || wm.buttons.Plus || wm.buttons.Home)
+                disconnectTimer.Change(disconnectTime, -1);
 
             if (snapIRpointer && !wm.irSensor.point1.visible && !wm.irSensor.point2.visible)
             {
@@ -713,6 +801,21 @@ namespace WiinUSoft
         }
 
         #region UI Events
+
+        private void btnControllerIcon_Click(object sender, RoutedEventArgs e)
+        {
+            if( (labelName.Content as TextBlock).Text == dName)
+            {
+                //labelName.Content = new TextBlock() { Text = deviceMac };                                     
+                labelName.Content = new TextBlock() { Text = Regex.Replace(deviceMac, ".{2}(?!$)", "$0:") };        //same as above, but regex adds : separators every 2char
+            }
+            else
+            {
+                labelName.Content = new TextBlock() { Text = dName };
+            }
+            
+        }
+
         private void btnXinput_Click(object sender, RoutedEventArgs e)
         {
             if (btnXinput.ContextMenu != null)
@@ -727,6 +830,11 @@ namespace WiinUSoft
             }
         }
 
+		private void btnDisconnect_Click(object sender, RoutedEventArgs e)
+        {
+            disconnect();
+		}
+		
         private void XOption_Click(object sender, RoutedEventArgs e)
         {
             if ((device.DataStream as WinBtStream).OpenConnection() && device.DataStream.CanRead)
@@ -747,6 +855,7 @@ namespace WiinUSoft
         {
             switch(icon.ContextMenu.Items.IndexOf(sender))
             {
+
                 case 0:
                     device.ForceControllerType(ControllerType.Unknown);
                     break;
@@ -816,14 +925,16 @@ namespace WiinUSoft
                 });
 
                 // light show
-                device.SetPlayerLED(1);
-                Delay(250).ContinueWith(o => device.SetPlayerLED(2));
-                Delay(500).ContinueWith(o => device.SetPlayerLED(3));
-                Delay(750).ContinueWith(o => device.SetPlayerLED(4));
-                Delay(1000).ContinueWith(o => device.SetPlayerLED(3));
-                Delay(1250).ContinueWith(o => device.SetPlayerLED(2));
-                Delay(1500).ContinueWith(o => device.SetPlayerLED(1));
-                if (targetXDevice != 0)
+                device.SetBinaryLEDs(0b1010);
+                Delay(250).ContinueWith(o => device.SetBinaryLEDs(0b0101));
+                Delay(500).ContinueWith(o => device.SetBinaryLEDs(0b1010));
+                Delay(750).ContinueWith(o => device.SetBinaryLEDs(0b0101));
+                Delay(1000).ContinueWith(o => device.SetBinaryLEDs(0b1010));
+                Delay(1250).ContinueWith(o => device.SetBinaryLEDs(0b0101));
+                Delay(1500).ContinueWith(o => device.SetBinaryLEDs(0b0000));
+                if(state == DeviceState.Discovered)
+                    Delay(1750).ContinueWith(o => device.SetBinaryLEDs(15));
+                else if (targetXDevice != 0)
                     Delay(1750).ContinueWith(o => device.SetPlayerLED(targetXDevice));
             }
         }
@@ -884,6 +995,8 @@ namespace WiinUSoft
                 ApplyCalibration(win.props.calPref, win.props.calString);
                 properties = new Property(win.props);
                 snapIRpointer = properties.pointerMode != Property.PointerOffScreenMode.Center;
+                disconnectTime = properties.idleDisconnect;
+                disconnectTimer.Change(disconnectTime, -1);
                 SetName(properties.name);
                 UserPrefs.Instance.AddDevicePref(properties);
                 UserPrefs.SavePrefs();

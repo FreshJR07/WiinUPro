@@ -27,6 +27,37 @@ namespace WiinUSoft
             {
                 autoConnectNumber.SelectedIndex = props.autoNum;
             }
+            switch (props.idleDisconnect)
+            {
+                case -1:        //disabled
+                    idleDisconnectTime.SelectedIndex = 0;
+                    break;
+                case 30000:     //30 sec
+                    idleDisconnectTime.SelectedIndex = 1;
+                    break;
+                case 60000:     //1 min
+                    idleDisconnectTime.SelectedIndex = 2;
+                    break;
+                case 120000:    //2 min
+                    idleDisconnectTime.SelectedIndex = 3;
+                    break;
+                case 180000:    //3 min
+                    idleDisconnectTime.SelectedIndex = 4;
+                    break;
+                case 300000:    //5 min
+                    idleDisconnectTime.SelectedIndex = 5;
+                    break;
+                case 600000:    //10 min
+                    idleDisconnectTime.SelectedIndex = 6;
+                    break;
+                case 900000:    //15 min
+                    idleDisconnectTime.SelectedIndex = 7;
+                    break;
+                default:
+                    idleDisconnectTime.SelectedIndex = 4;
+                    break;
+
+            }
             if (props.rumbleIntensity >= 0 && props.rumbleIntensity <= rumbleSelection.Items.Count)
             {
                 rumbleSelection.SelectedIndex = props.rumbleIntensity;
@@ -102,6 +133,41 @@ namespace WiinUSoft
                 props.autoNum = autoConnectNumber.SelectedIndex;
             }
         }
+
+        private void IdleDisconnect_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (props != null)
+            {
+                switch (idleDisconnectTime.SelectedIndex)
+                {
+                    case 0:
+                        props.idleDisconnect = -1;
+                        break;
+                    case 1:
+                        props.idleDisconnect = 30000;
+                        break;
+                    case 2:
+                        props.idleDisconnect = 60000;
+                        break;
+                    case 3:
+                        props.idleDisconnect = 120000;
+                        break;
+                    case 4:
+                        props.idleDisconnect = 180000;
+                        break;
+                    case 5:
+                        props.idleDisconnect = 300000;
+                        break;
+                    case 6:
+                        props.idleDisconnect = 600000;
+                        break;
+                    case 7:
+                        props.idleDisconnect = 900000;
+                        break;
+                }
+            }
+        }
+        
 
         private void Rumble_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

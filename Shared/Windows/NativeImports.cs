@@ -73,6 +73,12 @@ namespace Shared.Windows
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool CloseHandle(
             IntPtr hObject);
+			
+        /// <summary>
+        /// Used to diconnect bluetooth devices
+        /// </summary>
+		[DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern Boolean DeviceIoControl(IntPtr DeviceHandle, Int32 IoControlCode, ref long InBuffer, Int32 InBufferSize, IntPtr OutBuffer, Int32 OutBufferSize, ref Int32 BytesReturned, IntPtr Overlapped);
 
         #endregion
 
@@ -187,6 +193,13 @@ namespace Shared.Windows
             IntPtr HidDeviceObject, 
             ref HIDD_ATTRIBUTES Attributes);
 
+        //used to get bluetooth mac address of controller
+        [DllImport("hid.dll")]
+        public static extern bool HidD_GetSerialNumberString(
+            IntPtr HidDeviceObject, 
+            byte[] Buffer, 
+            Int32 BufferLength);
+
         [DllImport("hid.dll")]
         public extern static bool HidD_SetOutputReport(
             IntPtr HidDeviceObject,
@@ -208,11 +221,11 @@ namespace Shared.Windows
 
         [DllImport("irprops.cpl", SetLastError = true)]
         public static extern bool BluetoothFindNextRadio(
-            ref BLUETOOTH_FIND_RADIO_PARAMS hFind, 
+            ref IntPtr hFind, 
             out IntPtr phRadio);
 
         [DllImport("irprops.cpl", SetLastError = true)]
-        public static extern bool BluetoothFindRadioClose(ref IntPtr hFind);
+        public static extern bool BluetoothFindRadioClose(IntPtr hFind);
 
         [DllImport("irprops.cpl", SetLastError = true)]
         public static extern IntPtr BluetoothFindFirstDevice(
