@@ -167,6 +167,7 @@ namespace WiinUSoft
                 properties = new Property(devicePath);
                 UpdateIcon(device.Type);
                 SetName(device.Type.ToString());
+				disconnectTime = properties.idleDisconnect;
             }
         }
 
