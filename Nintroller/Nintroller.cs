@@ -4,6 +4,8 @@ using System.IO;
 
 namespace NintrollerLib
 {
+
+
     /// <summary>
     /// Used to represent a Nintendo controller
     /// </summary>
@@ -27,7 +29,7 @@ namespace NintrollerLib
         /// Called when the connection loss is detected.
         /// </summary>
         public event EventHandler<DisconnectedEventArgs>        Disconnected    = delegate { };
-        
+
         // General
         private bool               _connected                   = false;
         private INintrollerState   _state                       = new Wiimote();
@@ -624,10 +626,25 @@ namespace NintrollerLib
 
         #region Data Parsing
 
+            // Core buttons can be parsed here
+            // 20 BB BB LF 00 00 VV
+            // 20 = Acknowledgement Report
+            // BB BB = Core Buttons
+            // LF = LED Status & Flags
+            //     0x01 = Battery very low
+            //     0x02 = Extension connected
+            //     0x04 = Speaker enabled
+            //     0x08 = IR camera enabled
+            //     0x10 = LED 1
+            //     0x20 = LED 2
+            //     0x40 = LED 3
+            //     0x80 = LED 4
+            // VV = current battery level
+
         private void ParseReport(byte[] report)
         {
             InputReport input = (InputReport)report[0];
-            bool error = (report[4] & 0x0F) == 0x03;
+            bool error = (report[4] & 0x0F) == 0x01;
 
             switch(input)
             {
@@ -637,7 +654,7 @@ namespace NintrollerLib
                     Log("Status Report");
                     Log(BitConverter.ToString(report));
                     // core buttons can be parsed if desired
-
+                    
                     switch (_statusType)
                     {
                         case StatusType.Requested:

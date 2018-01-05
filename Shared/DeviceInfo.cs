@@ -5,6 +5,7 @@ namespace Shared
 {
     public class DeviceInfo
     {
+
         public string DeviceID
         {
             get

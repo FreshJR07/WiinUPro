@@ -1,0 +1,4 @@
+C:\WiinUPro\Nintroller\bin\Release\Nintroller.dll
+C:\WiinUPro\Nintroller\obj\Release\Nintroller.csprojResolveAssemblyReference.cache
+C:\WiinUPro\Nintroller\obj\Release\Nintroller.csproj.CoreCompileInputs.cache
+C:\WiinUPro\Nintroller\obj\Release\Nintroller.dll

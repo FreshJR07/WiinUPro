@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using System.Windows.Input;
+using System.ComponentModel; // CancelEventArgs
 using Shared;
 using Shared.Windows;
 
@@ -29,6 +30,8 @@ namespace WiinUSoft
         private Task _refreshTask;
         private CancellationTokenSource _refreshToken;
         private bool _refreshing;
+        private bool _reset_prefs;
+
 
         public MainWindow()
         {
@@ -36,24 +39,79 @@ namespace WiinUSoft
             deviceList = new List<DeviceControl>();
 
             InitializeComponent();
-
             Instance = this;
+            trayIcon.Visibility = Visibility.Visible;
+            MouseDown += new MouseButtonEventHandler(Window_MouseDown);
+                
+            string[] args = Environment.GetCommandLineArgs();
+            bool mflag = false;
+            foreach (string arg in args)
+            {
+                if ( arg == "-m" )
+                {
+                    mflag = true;
+                }
+            }
+
+            if (mflag == true)
+            {
+                HideWindow();
+                Refresh();
+                AutoRefresh(UserPrefs.Instance.autoRefresh);
+            }
+            else
+            {
+                if (UserPrefs.Instance.WindowTop != 0 && UserPrefs.Instance.WindowLeft != 0)
+                {
+                    this.Top = UserPrefs.Instance.WindowTop;
+                    this.Left = UserPrefs.Instance.WindowLeft;
+                }
+                ShowWindow();
+            }
+
+
+            if (UserPrefs.Instance.greedyMode)
+            {
+                WinBtStream.OverrideSharingMode = true;
+                WinBtStream.OverridenFileShare = FileShare.None;
+            }
+
         }
 
         public void HideWindow()
         {
-            if (WindowState == WindowState.Minimized)
-            {
-                trayIcon.Visibility = Visibility.Visible;
-                Hide();
-            }
+            //trayIcon.Visibility = Visibility.Visible;
+            Hide();
         }
 
         public void ShowWindow()
         {
-            trayIcon.Visibility = Visibility.Hidden;
+            //trayIcon.Visibility = Visibility.Hidden;
             Show();
             WindowState = WindowState.Normal;
+        }
+
+        //this is executed WHENEVER the application is closing and not just when clicking the title_Close button as expected
+        //this means the following function WILL get executed even when calling Application.Current.Shutdown() directly
+        void title_Close_click(object sender, CancelEventArgs e)
+        {
+            //cancels the window close command
+            if (UserPrefs.Instance.minimizeOnExit)
+            {
+                HideWindow();
+                e.Cancel = true;
+            }
+            //saves UserPrefs before closing unless UserPrefs are flagged to beg reset
+            else if (_reset_prefs != true)
+            {
+                if (WindowState == WindowState.Normal)
+                {
+                    UserPrefs.Instance.WindowTop = this.Top;
+                    UserPrefs.Instance.WindowLeft = this.Left;   
+                    //can use Properties.Settings.Default.Save() command to write/save into executable instead of UserPres
+                }
+                UserPrefs.SavePrefs();
+            }
         }
 
         public void ShowBalloon(string title, string message, BalloonIcon icon)
@@ -63,7 +121,7 @@ namespace WiinUSoft
 
         public void ShowBalloon(string title, string message, BalloonIcon icon, SystemSound sound)
         {
-            trayIcon.Visibility = Visibility.Visible;
+            //trayIcon.Visibility = Visibility.Visible;
             trayIcon.ShowBalloonTip(title, message, icon);
 
             if (sound != null)
@@ -71,12 +129,12 @@ namespace WiinUSoft
                 sound.Play();
             }
 
-            Task restoreTray = new Task(new Action(() =>
-            {
-                Thread.Sleep(7000);
-                Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => trayIcon.Visibility = WindowState == WindowState.Minimized ? Visibility.Visible : Visibility.Hidden));
-            }));
-            restoreTray.Start();
+            //Task restoreTray = new Task(new Action(() =>
+            //{
+            //    Thread.Sleep(7000);
+            //    Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => trayIcon.VisibilitytrayIcon.Visibility = WindowState == WindowState.Minimized ? Visibility.Visible : Visibility.Hidden));
+            //}));
+            //restoreTray.Start();
         }
 
         private void Refresh()
@@ -247,23 +305,13 @@ namespace WiinUSoft
             }
             catch { }
 
-            if (UserPrefs.Instance.startMinimized)
-            {
-                menu_StartMinimized.IsChecked = true;
-                WindowState = WindowState.Minimized;
-            }
-            
+            menu_StartMinimized.IsChecked = UserPrefs.Instance.startMinimized;
             menu_AutoStart.IsChecked = UserPrefs.Instance.autoStartup;
             menu_NoSharing.IsChecked = UserPrefs.Instance.greedyMode;
             menu_AutoRefresh.IsChecked = UserPrefs.Instance.autoRefresh;
             menu_MsBluetooth.IsChecked = !UserPrefs.Instance.toshibaMode;
             menu_AutoXInput.IsChecked = UserPrefs.Instance.autoXInput;
-
-            if (UserPrefs.Instance.greedyMode)
-            {
-                WinBtStream.OverrideSharingMode = true;
-                WinBtStream.OverridenFileShare = FileShare.None;
-            }
+            menu_MinimizeOnExit.IsChecked = UserPrefs.Instance.minimizeOnExit;
 
             Refresh();
             AutoRefresh(menu_AutoRefresh.IsChecked && deviceList.Count == 0);
@@ -306,8 +354,7 @@ namespace WiinUSoft
             
             if (menu_AutoRefresh.IsChecked)
             {
-                bool result = false;
-                result = AutoRefresh(groupAvailable.Children.Count + groupXinput.Children.Count == 0);
+                AutoRefresh(groupAvailable.Children.Count + groupXinput.Children.Count == 0);
             }
         }
 
@@ -323,6 +370,9 @@ namespace WiinUSoft
             }
 
             deviceList.Remove(sender);
+
+            Delay(100).ContinueWith(o => Refresh() );
+            Delay(200).ContinueWith(o => AutoRefresh(menu_AutoRefresh.IsChecked && deviceList.Count == 0) );
         }
         
         private void btnDetatchAllXInput_Click(object sender, RoutedEventArgs e)
@@ -391,7 +441,7 @@ namespace WiinUSoft
                 }
             }
 
-            Close();
+            Application.Current.Shutdown();
         }
 
         private void btnSettings_Click(object sender, RoutedEventArgs e)
@@ -462,6 +512,33 @@ namespace WiinUSoft
             UserPrefs.SavePrefs();
         }
 
+        private void menu_MinimizeOnExit_Click(object sender, RoutedEventArgs e)
+        {
+            menu_MinimizeOnExit.IsChecked = !menu_MinimizeOnExit.IsChecked;
+            UserPrefs.Instance.minimizeOnExit = menu_MinimizeOnExit.IsChecked;
+            UserPrefs.SavePrefs();
+        }
+
+        private void menu_ResetPrefs_Click(object sender, RoutedEventArgs e)
+        {
+            _reset_prefs = true;
+            UserPrefs.AutoStart = false;
+            System.IO.File.Delete(UserPrefs.DataPath);
+            System.Diagnostics.Process.Start(System.Reflection.Assembly.GetExecutingAssembly().Location, "-r");
+        }
+
+        private void tray_Click(object sender, RoutedEventArgs e)
+        {
+            ShowWindow();
+        }
+
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove();
+        }    
+
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
@@ -478,7 +555,6 @@ namespace WiinUSoft
             //As to why the dispatcher is needed to invoke a working refresh, I have no idea, but it works this way
             Delay(100).ContinueWith(o => Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => Refresh())));
         }
-
         
         static System.Threading.Tasks.Task Delay(int milliseconds)
         {

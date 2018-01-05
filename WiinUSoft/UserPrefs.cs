@@ -3,26 +3,23 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml.Serialization;
+using Microsoft.Win32.TaskScheduler;       //not acutally made by microsoft "http://taskscheduler.codeplex.com/"
 
 namespace WiinUSoft
 {
     public class UserPrefs
     {
         private static UserPrefs _instance;
+        
+        //loads prefs in %AppData% if they exist or creates instance with default values
         public static UserPrefs Instance
         {
             get
             {
                 if (_instance == null)
                 {
-                    if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + @"\prefs.config"))
+                    if (File.Exists(DataPath))
                     {
-                        DataPath = AppDomain.CurrentDomain.BaseDirectory + @"\prefs.config";
-                        LoadPrefs();
-                    }
-                    else if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\prefs.config"))
-                    {
-                        DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\prefs.config";
                         LoadPrefs();
                     }
                     else
@@ -33,62 +30,58 @@ namespace WiinUSoft
                         // we could, but just in case lets not
                         //_instance.greedyMode = Environment.OSVersion.Version.Major < 10; 
                         //_instance.toshibaMode = !Shared.Windows.NativeImports.BluetoothEnableDiscovery(IntPtr.Zero, true);
-                        DataPath = AppDomain.CurrentDomain.BaseDirectory + @"\prefs.config";
-                        
-                        if (!SavePrefs())
-                        {
-                            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\prefs.config";
-                            SavePrefs();
-                        }
+                        SavePrefs();
                     }
                 }
-
                 return _instance;
             }
         }
 
-        public static string DataPath { get; protected set; }
+        public static string DirectoryPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WiinUSoft\";
+        public static string DataPath = DirectoryPath + "prefs.config";
+        
+        //creates a task in task scheduler for autoStartup
         public static bool AutoStart
         {
             get { return Instance.autoStartup; }
             set
             {
-                try
+                //note: created task is called WiinUSoft (USERNAME)
+                //(USERNAME) is appended because windows cannot have duplicate task names
+                //duplicate task names would occur if multiple users existed on a computer and would each enable auto startup
+                string taskname = "WiinUSoft (" + Environment.UserName + ")" ;
+                
+                //connect to task service
+                using ( TaskService ts = new TaskService() )
                 {
-                    RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-
+                    //create task
                     if (value)
                     {
-                        if (key.GetValue("WiinUSoft") == null)
-                        {
-                            key.SetValue("WiinUSoft", (new Uri(System.Reflection.Assembly.GetEntryAssembly().CodeBase)).LocalPath);
-                        }
+                        TaskDefinition td = ts.NewTask();
+                            td.RegistrationInfo.Author = "WiinUSoft";
+                            td.RegistrationInfo.Description = "Run WiinUSoft at Startup ";
+                            td.Principal.LogonType = TaskLogonType.InteractiveToken;
+                            td.Settings.ExecutionTimeLimit = System.TimeSpan.Zero; // needed so program does not default to 72hr time limit and will run forever
+                            td.Settings.MultipleInstances = TaskInstancesPolicy.IgnoreNew; //do not start new instance if already running
+                            td.Settings.DisallowStartIfOnBatteries = false;
+                            td.Settings.StopIfGoingOnBatteries = false;
+                            td.Settings.WakeToRun = false;
+                            td.Settings.StartWhenAvailable = true;
+                            LogonTrigger lTrigger = (LogonTrigger)td.Triggers.Add(new LogonTrigger());
+                                lTrigger.UserId = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+                            td.Actions.Add(new ExecAction(System.Reflection.Assembly.GetExecutingAssembly().Location, "-m", null));
+                        //register task
+                        ts.RootFolder.RegisterTaskDefinition(taskname, td, TaskCreation.CreateOrUpdate, null, null, TaskLogonType.InteractiveToken, null);
                     }
+                    //delete task
                     else
                     {
-                        key.DeleteValue("WiinUSoft", false);
-                    }
-                }
-                catch
-                {
-                    string dir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-
-                    if (value)
-                    {
-                        if (!File.Exists(Path.Combine(dir, "WiinUSoft.lnk")))
+                        if (ts.GetTask(taskname) != null) 
                         {
-                            MainWindow.Instance.CreateShortcut(dir);
-                        }
-                    }
-                    else
-                    {
-                        if (File.Exists(Path.Combine(dir, "WiinUSoft.lnk")))
-                        {
-                            File.Delete(Path.Combine(dir, "WiinUSoft.lnk"));
+                            ts.RootFolder.DeleteTask(taskname);
                         }
                     }
                 }
-
                 Instance.autoStartup = value;
             }
         }
@@ -102,6 +95,9 @@ namespace WiinUSoft
         public bool toshibaMode;
         public bool autoRefresh = true;
         public bool autoXInput = true;
+        public bool minimizeOnExit = true;
+        public double WindowTop = 0;
+        public double WindowLeft = 0;
 
         public UserPrefs()
         { }
@@ -157,6 +153,10 @@ namespace WiinUSoft
                 }
                 else
                 {
+                    if ( !Directory.Exists(DirectoryPath) )
+                    {
+                        Directory.CreateDirectory(DirectoryPath);
+                    }
                     using (FileStream stream = File.Create(DataPath))
                     using (StreamWriter writer = new StreamWriter(stream))
                     {

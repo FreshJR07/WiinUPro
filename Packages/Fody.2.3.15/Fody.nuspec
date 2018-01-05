@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Fody</id>
+    <version>2.3.15</version>
+    <authors>Simon Cropp</authors>
+    <owners>Simon Cropp</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <developmentDependency>true</developmentDependency>
+    <licenseUrl>http://www.opensource.org/licenses/mit-license.php</licenseUrl>
+    <projectUrl>http://github.com/Fody/Fody</projectUrl>
+    <iconUrl>https://raw.github.com/Fody/Fody/master/package_icon.png</iconUrl>
+    <description>Extensible tool for weaving .net assemblies.</description>
+    <tags>ILWeaving, Fody, Cecil, AOP</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.6" />
+    </dependencies>
+  </metadata>
+</package>

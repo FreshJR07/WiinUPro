@@ -3,7 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         xmlns:local="clr-namespace:WiinUSoft" x:Class="WiinUSoft.MainWindow"
-        Title="WiinUSoft" Height="436" Width="624" Loaded="Window_Loaded" Icon="../Images/WiinUSoft_Icon32.png" Background="{DynamicResource BrushSocialBlue}" StateChanged="Window_StateChanged">
+        Closing="title_Close_click"
+        ResizeMode="CanMinimize"
+        Title="WiinUSoft" Height="436" Width="614" Loaded="Window_Loaded" Icon="../Images/WiinUSoft_Icon32.png" Background="{DynamicResource BrushSocialBlue}" StateChanged="Window_StateChanged">
     <Grid>
         <Grid.Resources>
             <local:ShowWindowCommand x:Key="ShowWindow" />
@@ -12,29 +14,23 @@
                         IconSource="../Images/WiinUSoft.ico" 
                         ToolTipText="WiinUSoft" 
                         Visibility="Hidden"
-                        DoubleClickCommand="{StaticResource ShowWindow}">
+                        TrayLeftMouseUp="tray_Click">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu Background="{DynamicResource BrushAntemWhite}">
-                    <MenuItem Header="Show" Click="MenuItem_Show_Click" FontWeight="Bold" />
+                    <MenuItem Header="Show" Click="MenuItem_Show_Click" />
                     <MenuItem Header="Refresh" Click="MenuItem_Refresh_Click" />
-                    <MenuItem Header="Exit" Click="MenuItem_Exit_Click" />
+                    <MenuItem Header="Exit" Click="MenuItem_Exit_Click" FontWeight="Bold" />
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>
         <Border CornerRadius="6" BorderBrush="{DynamicResource BrushJohnTheRevelator}" Background="{DynamicResource BrushAntemWhite}" BorderThickness="2" Margin="8,42,0,8" HorizontalAlignment="Left" Width="292">
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="groupAvailable" HorizontalAlignment="Left" Width="280" Margin="4,4,0,0"/>
-            </ScrollViewer>
         </Border>
         <Border CornerRadius="6" BorderBrush="{DynamicResource BrushJohnTheRevelator}" Background="{DynamicResource BrushAntemWhite}" BorderThickness="2" Margin="308,42,0,8" HorizontalAlignment="Left" Width="292">
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="groupXinput" HorizontalAlignment="Left" Margin="4,4,0,0" Width="280" Background="{DynamicResource BrushAntemWhite}"/>
-            </ScrollViewer>
         </Border>
         <Border CornerRadius="6" BorderBrush="{DynamicResource BrushJohnTheRevelator}" Background="{DynamicResource BrushAntemWhite}" BorderThickness="2" Margin="608,42,0,8" HorizontalAlignment="Left" Width="292" Grid.ColumnSpan="2" Visibility="Hidden">
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel HorizontalAlignment="Left" Margin="4,4,0,0" Width="280"/>
-            </ScrollViewer>
         </Border>
         <Label Content="Unmanaged Devices (Ignored)" HorizontalAlignment="Left" Margin="126,10,0,0" VerticalAlignment="Top"/>
         <Label Content="Connected as Xbox Controller (XInput)" HorizontalAlignment="Left" Margin="337,10,0,0" VerticalAlignment="Top"/>
@@ -57,14 +53,17 @@
         <Button x:Name="btnSettings" HorizontalAlignment="Left" Margin="576,10,0,0" VerticalAlignment="Top" Width="24" Height="24" BorderBrush="{DynamicResource BrushAntemBlue}" BorderThickness="2" FontSize="11" ToolTip="Settings" Background="{DynamicResource ButonFillBrush1}" Click="btnSettings_Click">
             <Button.ContextMenu>
                 <ContextMenu>
-                    <MenuItem x:Name="menu_AutoStart" Header="Auto Startup" Click="menu_AutoStart_Click"/>
-                    <MenuItem x:Name="menu_StartMinimized" Header="Start Minimized" Click="menu_StartMinimized_Click"/>
-                    <MenuItem x:Name="menu_AutoRefresh" Header="Auto Refresh" Click="menu_AutoRefresh_Click"/>
                     <MenuItem x:Name="menu_AutoXInput" Header="Auto Connect" Click="menu_AutoXInput_Click"/>
+                    <MenuItem x:Name="menu_AutoRefresh" Header="Auto Refresh" Click="menu_AutoRefresh_Click"/>
                     <MenuItem x:Name="menu_NoSharing" Header="Greedy Mode" Click="menu_NoSharing_Click"/>
+                    <MenuItem x:Name="menu_AutoStart" Header="Run at Startup" Click="menu_AutoStart_Click"/>
+                    <MenuItem x:Name="menu_StartMinimized" Header="Start Minimized" Click="menu_StartMinimized_Click" Visibility="Collapsed"/>
+                    <MenuItem x:Name="menu_MinimizeOnExit" Header="Minimize on Close" Click="menu_MinimizeOnExit_Click"/>
                     <MenuItem x:Name="menu_MsBluetooth" Header="Microsoft Bluetooth" Click="menu_MsBluetooth_Click"/>
+                    <MenuItem x:Name="menu_ResetPrefs" Header="Reset User Preferencs" Click="menu_ResetPrefs_Click"/>
                     <MenuItem x:Name="menu_SetDefaultCalibration" Header="Set Default Calibration" Click="menu_SetDefaultCalibration_Click"/>
                     <MenuItem x:Name="menu_version" Header="version 2.0" IsEnabled="False"/>
+                    <MenuItem x:Name="menu_exit" Header="Exit" FontWeight="Bold" Click="MenuItem_Exit_Click" />
                 </ContextMenu>
             </Button.ContextMenu>
             <Image Source="../Images/Settings-icon.png"/>

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WiinUSoft.Windows"
         mc:Ignorable="d"
-        Title="Debug Window" Height="210" Width="500" Icon="../Images/WiinUSoft_Icon32.png" Background="{DynamicResource BrushSocialBlue}" Closing="Window_Closing" Loaded="Window_Loaded">
+        Title="Sync Window" Height="210" Width="500" Icon="../Images/WiinUSoft_Icon32.png" Background="{DynamicResource BrushSocialBlue}" Closing="Window_Closing" Loaded="Window_Loaded">
     <Grid>
         <ScrollViewer Name="scroll">
             <TextBox x:Name="prompt" TextWrapping="Wrap" Margin="10,10,10,10" IsReadOnly="False" Background="{DynamicResource BrushAntemWhite}"/>

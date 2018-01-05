@@ -179,6 +179,7 @@ namespace WiinUSoft
 
         public void Detatch()
         {
+			device.SetBinaryLEDs(0b1111);
             device?.StopReading();
             holder?.Close();
             lowBatteryFired = false;
